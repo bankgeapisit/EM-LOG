@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: rgba(255,255,255,0.07);
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --accent3: #ff6b6b;
+    --accent4: #ffd93d;
+    --text: #e8eaf0;
+    --muted: #7b8099;
+    --font: 'DM Sans', sans-serif;
+    --font2: 'Space Grotesk', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* === NAVBAR === */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    background: rgba(26,29,39,0.95);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-logo {
+    font-family: var(--font2);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-logo span { color: var(--text); }
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab {
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none; background: none;
+  }
+  .nav-tab:hover, .nav-tab.active {
+    background: var(--surface2);
+    color: var(--text);
+  }
+  .nav-actions { display: flex; align-items: center; gap: 12px; }
+  .sheet-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px;
+    background: #0f9d58;
+    border: none; border-radius: 8px;
+    color: white; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .sheet-btn:hover { background: #0b8a4d; transform: translateY(-1px); }
+  .sheet-btn svg { width: 16px; height: 16px; }
+  .sync-indicator {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 0.75rem; color: var(--muted);
+  }
+  .sync-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent2);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+  }
+
+  /* === SETUP MODAL === */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    width: 480px;
+    max-width: 95vw;
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .modal h2 { font-family: var(--font2); margin-bottom: 6px; font-size: 1.3rem; }
+  .modal p { color: var(--muted); font-size: 0.85rem; margin-bottom: 20px; line-height: 1.6; }
+  .modal label { font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 6px; }
+  .modal input {
+    width: 100%; padding: 11px 14px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 9px; color: var(--text);
+    font-family: var(--font); font-size: 0.9rem;
+    margin-bottom: 14px; outline: none; transition: border 0.2s;
+  }
+  .modal input:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 6px; }
+  .btn-primary {
+    flex: 1; padding: 11px;
+    background: var(--accent); border: none;
+    border-radius: 9px; color: white; font-weight: 600;
+    font-size: 0.88rem; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-primary:hover { background: #5952e8; transform: translateY(-1px); }
+  .btn-demo {
+    padding: 11px 18px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 9px; color: var(--text); font-weight: 500;
+    font-size: 0.88rem; cursor: pointer; transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-demo:hover { background: var(--surface); }
+  .help-text {
+    font-size: 0.76rem; color: var(--muted);
+    margin-top: 12px; line-height: 1.6;
+  }
+  .help-text code {
+    background: var(--surface2); padding: 2px 6px;
+    border-radius: 4px; font-family: monospace;
+  }
+
+  /* === MAIN LAYOUT === */
+  main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+  .header-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px;
+  }
+  .header-row h1 {
+    font-family: var(--font2);
+    font-size: 1.4rem; font-weight: 600;
+  }
+  .header-row span { color: var(--muted); font-size: 0.85rem; }
+  .last-sync { font-size: 0.78rem; color: var(--muted); }
+
+  /* === STAT CARDS === */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    position: relative; overflow: hidden;
+    animation: fadeIn 0.5s ease both;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .stat-card.c1::before { background: linear-gradient(90deg, var(--accent), transparent); }
+  .stat-card.c2::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+  .stat-card.c3::before { background: linear-gradient(90deg, var(--accent3), transparent); }
+  .stat-card.c4::before { background: linear-gradient(90deg, var(--accent4), transparent); }
+  .stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .stat-value {
+    font-family: var(--font2); font-size: 1.7rem; font-weight: 700;
+    line-height: 1; margin-bottom: 6px;
+  }
+  .stat-sub { font-size: 0.78rem; color: var(--muted); }
+  .stat-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 0.72rem; font-weight: 600; padding: 3px 8px;
+    border-radius: 20px; margin-top: 8px;
+  }
+  .stat-badge.up { background: rgba(0,212,170,0.12); color: var(--accent2); }
+  .stat-badge.down { background: rgba(255,107,107,0.12); color: var(--accent3); }
+
+  .donut-stat {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .donut-wrap { position: relative; width: 60px; height: 60px; flex-shrink: 0; }
+  .donut-wrap canvas { position: absolute; top: 0; left: 0; }
+  .donut-pct {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    font-family: var(--font2); font-size: 0.78rem; font-weight: 700;
+  }
+
+  /* === GRID === */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 16px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    animation: fadeIn 0.6s ease both;
+  }
+  .card-title {
+    font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.09em; color: var(--muted); margin-bottom: 16px;
+  }
+
+  /* chart cards */
+  .card-weekly { grid-column: 1; grid-row: 1; }
+  .card-donut  { grid-column: 1; grid-row: 2; }
+  .card-balance { grid-column: 2; grid-row: 1; }
+  .card-categories { grid-column: 2; grid-row: 2; }
+  .card-bills { grid-column: 3; grid-row: 1; }
+  .card-calendar { grid-column: 4; grid-row: 1; }
+  .card-txns { grid-column: 3 / 5; grid-row: 2; }
+
+  /* Balance card */
+  .balance-amount {
+    font-family: var(--font2); font-size: 2.2rem; font-weight: 700;
+    margin: 12px 0 4px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .balance-sub { font-size: 0.8rem; color: var(--muted); }
+  .balance-chips { display: flex; gap: 10px; margin-top: 16px; }
+  .balance-chip {
+    flex: 1; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; text-align: center;
+  }
+  .chip-val { font-family: var(--font2); font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+  .chip-label { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+
+  /* Bills */
+  .bill-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .bill-item:last-child { border-bottom: none; }
+  .bill-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; flex-shrink: 0;
+  }
+  .bill-info { flex: 1; }
+  .bill-name { font-weight: 600; font-size: 0.88rem; }
+  .bill-date { font-size: 0.73rem; color: var(--muted); }
+  .bill-amount { font-family: var(--font2); font-weight: 700; font-size: 0.95rem; }
+
+  /* Categories bar */
+  .cat-item { margin-bottom: 12px; }
+  .cat-header { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 5px; }
+  .cat-pct { color: var(--muted); }
+  .cat-bar { height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .cat-fill { height: 100%; border-radius: 99px; transition: width 1s ease; }
+
+  /* Calendar */
+  .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .cal-month { font-family: var(--font2); font-weight: 600; font-size: 0.9rem; }
+  .cal-nav { background: none; border: 1px solid var(--border); color: var(--text); width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-day-name { text-align: center; font-size: 0.65rem; color: var(--muted); padding: 4px 0; font-weight: 600; }
+  .cal-day {
+    text-align: center; padding: 5px 2px; font-size: 0.75rem;
+    border-radius: 6px; position: relative; cursor: default;
+  }
+  .cal-day.today { background: var(--accent); color: white; font-weight: 700; }
+  .cal-day.has-event::after {
+    content: ''; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: var(--accent2);
+  }
+  .cal-day.other-month { color: var(--muted); opacity: 0.4; }
+
+  /* Transactions */
+  .txn-table { width: 100%; border-collapse: collapse; }
+  .txn-table th {
+    text-align: left; font-size: 0.7rem; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    padding: 0 0 10px; font-weight: 600;
+  }
+  .txn-table td {
+    padding: 9px 0; font-size: 0.83rem;
+    border-top: 1px solid var(--border);
+  }
+  .txn-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .txn-badge {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 20px; font-size: 0.7rem; font-weight: 600;
+  }
+  .txn-amount.neg { color: var(--accent3); }
+  .txn-amount.pos { color: var(--accent2); }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 30px 20px; color: var(--muted); font-size: 0.85rem; }
+  .empty-icon { font-size: 2rem; margin-bottom: 8px; }
+
+  /* Loading */
+  .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 20px; color: var(--muted); font-size: 0.85rem; }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    .dashboard-grid { grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
+    .card-weekly, .card-donut, .card-balance, .card-categories,
+    .card-bills, .card-calendar, .card-txns { grid-column: auto; grid-row: auto; }
+    .card-txns { grid-column: span 2; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 700px) {
+    main { padding: 16px; }
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .card-txns { grid-column: 1; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    nav { flex-wrap: wrap; gap: 10px; }
+    .nav-tabs { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SETUP MODAL -->
+<div class="modal-overlay open" id="setupModal">
+  <div class="modal">
+    <h2>🔗 เชื่อมต่อ Google Sheets</h2>
+    <p>วาง Google Sheets URL หรือ Sheet ID ของคุณด้านล่าง ตรวจสอบให้แน่ใจว่า Sheet ถูกตั้งค่าให้ <strong>ทุกคนที่มีลิงก์สามารถดูได้</strong></p>
+
+    <label>Google Sheets URL หรือ Sheet ID</label>
+    <input type="text" id="sheetInput" placeholder="https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/..." />
+
+    <label>Sheet Name (ชื่อแท็บ) — ค่าเริ่มต้น: Sheet1</label>
+    <input type="text" id="sheetName" placeholder="Sheet1" value="Sheet1" />
+
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="connectSheet()">เชื่อมต่อ</button>
+      <button class="btn-demo" onclick="loadDemo()">ใช้ข้อมูล Demo</button>
+    </div>
+
+    <div class="help-text">
+      📋 <strong>รูปแบบ Sheet ที่รองรับ:</strong> คอลัมน์ควรมี <code>Date</code>, <code>Category</code>, <code>Description</code>, <code>Amount</code>, <code>Type</code> (income/expense)<br><br>
+      🔒 วิธีแชร์: เปิด Sheet → Share → Anyone with the link → Viewer
+    </div>
+  </div>
+</div>
+
+<!-- NAVBAR -->
+<nav>
+  <div class="nav-logo">💰 <span>FinanceBoard</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active">Dashboard</button>
+    <button class="nav-tab">Reports</button>
+    <button class="nav-tab">Categories</button>
+    <button class="nav-tab">Goals</button>
+  </div>
+  <div class="nav-actions">
+    <div class="sync-indicator">
+      <div class="sync-dot" id="syncDot" style="background:var(--muted)"></div>
+      <span id="syncLabel">ไม่ได้เชื่อมต่อ</span>
+    </div>
+    <button class="sheet-btn" onclick="document.getElementById('setupModal').classList.add('open')">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+      Google Sheets
+    </button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main id="dashMain" style="display:none">
+  <div class="header-row">
+    <div>
+      <h1>Financial Dashboard</h1>
+      <span id="lastSync" class="last-sync">—</span>
+    </div>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card c1">
+      <div class="stat-label">Total Balance</div>
+      <div class="stat-value" id="s-balance">—</div>
+      <div class="stat-sub">ยอดคงเหลือรวม</div>
+    </div>
+    <div class="stat-card c2">
+      <div class="stat-label">รายรับเดือนนี้</div>
+      <div class="stat-value" id="s-income">—</div>
+      <div class="stat-sub" id="s-income-count">—</div>
+    </div>
+    <div class="stat-card c3">
+      <div class="stat-label">รายจ่ายเดือนนี้</div>
+      <div class="stat-value" id="s-expense">—</div>
+      <div class="stat-sub" id="s-expense-count">—</div>
+    </div>
+    <div class="stat-card c4">
+      <div class="stat-label">เงินออมเดือนนี้</div>
+      <div class="stat-value" id="s-saving">—</div>
+      <div class="stat-badge up" id="s-saving-pct">—</div>
+    </div>
+  </div>
+
+  <!-- GRID -->
+  <div class="dashboard-grid">
+    <!-- Weekly chart -->
+    <div class="card card-weekly">
+      <div class="card-title">รายจ่ายรายสัปดาห์</div>
+      <canvas id="weeklyChart" height="160"></canvas>
+    </div>
+
+    <!-- Donut -->
+    <div class="card card-donut">
+      <div class="card-title">สัดส่วนหมวดหมู่</div>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="position:relative;width:130px;height:130px;flex-shrink:0">
+          <canvas id="donutChart"></canvas>
+        </div>
+        <div id="donutLegend" style="flex:1;min-width:120px;font-size:0.78rem;"></div>
+      </div>
+    </div>
+
+    <!-- Balance -->
+    <div class="card card-balance">
+      <div class="card-title">สรุปการเงิน</div>
+      <div class="balance-amount" id="b-balance">฿0</div>
+      <div class="balance-sub">ยอดคงเหลือทั้งหมด</div>
+      <div class="balance-chips">
+        <div class="balance-chip">
+          <div class="chip-val" id="b-income">฿0</div>
+          <div class="chip-label">รายรับ</div>
+        </div>
+        <div class="balance-chip">
+          <div class="chip-val" style="color:var(--accent3)" id="b-expense">฿0</div>
+          <div class="chip-label">รายจ่าย</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top categories -->
+    <div class="card card-categories">
+      <div class="card-title">หมวดหมู่ยอดนิยม</div>
+      <div id="catBars"></div>
+    </div>
+
+    <!-- Upcoming bills -->
+    <div class="card card-bills">
+      <div class="card-title">บิลที่ใกล้ถึงกำหนด</div>
+      <div id="billsList"></div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="card card-calendar">
+      <div class="card-title">ปฏิทินธุรกรรม</div>
+      <div id="calendarWidget"></div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="card card-txns">
+      <div class="card-title">ธุรกรรมล่าสุด</div>
+      <div id="txnTable"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ==================== UTILS ====================
+const fmt = v => '฿' + Math.abs(v).toLocaleString('th-TH', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtShort = v => {
+  const abs = Math.abs(v);
+  if (abs >= 1e6) return '฿' + (abs/1e6).toFixed(1) + 'M';
+  if (abs >= 1e3) return '฿' + (abs/1e3).toFixed(1) + 'K';
+  return fmt(v);
+};
+
+const CAT_COLORS = ['#6c63ff','#00d4aa','#ff6b6b','#ffd93d','#a78bfa','#38bdf8','#fb923c','#34d399','#f472b6','#94a3b8'];
+const ICONS = { mortgage:'🏠', house:'🏠', internet:'📶', wifi:'📶', car:'🚗', insurance:'🛡️', grocery:'🛒', food:'🍔', dining:'🍽️', shopping:'🛍️', travel:'✈️', utilities:'💡', electric:'💡', water:'💧', phone:'📱', subscription:'📺' };
+function catIcon(cat) {
+  const low = (cat||'').toLowerCase();
+  for (const [k,v] of Object.entries(ICONS)) if (low.includes(k)) return v;
+  return '💳';
+}
+
+const iconBgs = ['rgba(108,99,255,0.15)','rgba(0,212,170,0.15)','rgba(255,107,107,0.15)','rgba(255,217,61,0.15)','rgba(167,139,250,0.15)'];
+
+// ==================== GOOGLE SHEETS ====================
+function extractSheetId(input) {
+  input = input.trim();
+  const m = input.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(input)) return input;
+  return null;
+}
+
+async function fetchSheetData(sheetId, sheetName) {
+  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Cannot fetch sheet');
+  const text = await res.text();
+  const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
+  if (json.status === 'error') throw new Error(json.errors?.[0]?.message || 'Sheet error');
+  return parseGviz(json.table);
+}
+
+function parseGviz(table) {
+  const cols = table.cols.map(c => c.label.trim().toLowerCase());
+  return table.rows.map(row => {
+    const obj = {};
+    row.c.forEach((cell, i) => {
+      obj[cols[i]] = cell ? cell.v : null;
+    });
+    return obj;
+  }).filter(r => r.date || r.amount);
+}
+
+function normalizeRow(row) {
+  // Try to find date, category, description, amount, type fields
+  const keys = Object.keys(row);
+  const find = (...names) => {
+    for (const n of names) {
+      const k = keys.find(k => k.toLowerCase().includes(n.toLowerCase()));
+      if (k !== undefined) return row[k];
+    }
+    return null;
+  };
+
+  let dateVal = find('date','วันที่','วัน');
+  let date = null;
+  if (dateVal) {
+    if (typeof dateVal === 'string') date = new Date(dateVal);
+    else if (typeof dateVal === 'number') { // serial date from sheets
+      date = new Date((dateVal - 25569) * 86400 * 1000);
+    } else date = new Date(dateVal);
+  }
+
+  const amount = parseFloat(find('amount','จำนวน','เงิน','ราคา') || 0);
+  const type = (find('type','ประเภท','รายการ') || '').toString().toLowerCase();
+  const category = find('category','หมวดหมู่','หมวด','ประเภทรายการ') || 'Other';
+  const description = find('description','รายละเอียด','desc','หัวข้อ') || '';
+
+  return { date, amount, type, category, description };
+}
+
+// ==================== DEMO DATA ====================
+function generateDemo() {
+  const now = new Date();
+  const rows = [];
+  const cats = ['Groceries','Dining Out','Utilities','Transport','Shopping','Entertainment','Mortgage','Insurance','Travel'];
+  const descs = {
+    Groceries: ['Tops Market','Big C','Lotus','Makro'],
+    'Dining Out': ['Shabu Shi','MK Restaurant','Food Panda','Pizza Hut'],
+    Utilities: ['Electric Bill','Water Bill','Internet - True','Phone Bill'],
+    Transport: ['Grab Car','BTS Monthly','PTT Fuel','Bolt'],
+    Shopping: ['Lazada Order','Shopee','Central Dept','IKEA'],
+    Entertainment: ['Netflix','Spotify','Game Store','Cinema'],
+    Mortgage: ['Home Loan Payment'],
+    Insurance: ['Car Insurance','Life Insurance'],
+    Travel: ['Booking.com','AirAsia Ticket','Hotel']
+  };
+  const incomeDesc = ['Salary','Freelance','Bonus','Dividend','Rental Income'];
+  
+  for (let i = 0; i < 60; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - Math.floor(Math.random() * 60));
+    const cat = cats[Math.floor(Math.random() * cats.length)];
+    const descArr = descs[cat];
+    rows.push({
+      date: d,
+      amount: -(Math.floor(Math.random() * 2000) + 50),
+      type: 'expense',
+      category: cat,
+      description: descArr[Math.floor(Math.random() * descArr.length)]
+    });
+  }
+  // income
+  for (let m = 0; m < 3; m++) {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - m);
+    d.setDate(1);
+    rows.push({ date: d, amount: 35000, type: 'income', category: 'Income', description: 'Salary' });
+    if (Math.random() > 0.5)
+      rows.push({ date: new Date(d.getTime() + 5*86400000), amount: Math.floor(Math.random()*5000)+1000, type: 'income', category: 'Income', description: incomeDesc[Math.floor(Math.random()*3)+1] });
+  }
+  return rows.sort((a,b) => b.date - a.date);
+}
+
+// ==================== RENDER ====================
+let weeklyChartInst = null;
+let donutChartInst = null;
+
+function renderDashboard(rows) {
+  const now = new Date();
+  const thisMonth = rows.filter(r => r.date && r.date.getMonth() === now.getMonth() && r.date.getFullYear() === now.getFullYear());
+  const income = thisMonth.filter(r => r.type === 'income' || r.amount > 0).reduce((s,r) => s + Math.abs(r.amount), 0);
+  const expense = thisMonth.filter(r => r.type === 'expense' || (r.amount < 0 && r.type !== 'income')).reduce((s,r) => s + Math.abs(r.amount), 0);
+  const balance = rows.reduce((s,r) => s + (r.amount), 0);
+  const saving = income - expense;
+  const savingPct = income > 0 ? Math.round(saving / income * 100) : 0;
+
+  document.getElementById('s-balance').textContent = fmtShort(balance);
+  document.getElementById('s-income').textContent = fmtShort(income);
+  document.getElementById('s-income-count').textContent = thisMonth.filter(r => r.amount > 0).length + ' รายการ';
+  document.getElementById('s-expense').textContent = fmtShort(expense);
+  document.getElementById('s-expense-count').textContent = thisMonth.filter(r => r.amount < 0).length + ' รายการ';
+  document.getElementById('s-saving').textContent = fmtShort(saving);
+  const savBadge = document.getElementById('s-saving-pct');
+  savBadge.textContent = (saving >= 0 ? '▲ ' : '▼ ') + Math.abs(savingPct) + '%';
+  savBadge.className = 'stat-badge ' + (saving >= 0 ? 'up' : 'down');
+  document.getElementById('b-balance').textContent = fmt(balance);
+  document.getElementById('b-income').textContent = fmtShort(income);
+  document.getElementById('b-expense').textContent = fmtShort(expense);
+
+  renderWeekly(rows);
+  renderDonut(rows);
+  renderCatBars(rows);
+  renderBills(rows);
+  renderCalendar(rows, now);
+  renderTxns(rows);
+}
+
+function renderWeekly(rows) {
+  const days = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+  const now = new Date();
+  const weekData = [0,0,0,0,0,0,0];
+  rows.forEach(r => {
+    if (!r.date || r.amount >= 0) return;
+    const diff = Math.floor((now - r.date) / 86400000);
+    if (diff >= 0 && diff < 7) weekData[6 - diff] += Math.abs(r.amount);
+  });
+  if (weeklyChartInst) weeklyChartInst.destroy();
+  const ctx = document.getElementById('weeklyChart').getContext('2d');
+  weeklyChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: days,
+      datasets: [{
+        data: weekData,
+        backgroundColor: weekData.map((v,i) => i === 6 ? '#6c63ff' : 'rgba(108,99,255,0.25)'),
+        borderRadius: 6, borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt(c.raw) } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#7b8099', font: { size: 10 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#7b8099', font: { size: 10 }, callback: v => '฿'+v.toLocaleString() } }
+      }
+    }
+  });
+}
+
+function renderDonut(rows) {
+  const catMap = {};
+  rows.forEach(r => {
+    if (r.amount >= 0 || r.type === 'income') return;
+    const c = r.category || 'Other';
+    catMap[c] = (catMap[c] || 0) + Math.abs(r.amount);
+  });
+  const sorted = Object.entries(catMap).sort((a,b) => b[1]-a[1]).slice(0,6);
+  const labels = sorted.map(e => e[0]);
+  const data = sorted.map(e => e[1]);
+  const total = data.reduce((s,v) => s+v, 0);
+
+  if (donutChartInst) donutChartInst.destroy();
+  const ctx = document.getElementById('donutChart').getContext('2d');
+  donutChartInst = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: CAT_COLORS, borderWidth: 0, hoverOffset: 4 }] },
+    options: {
+      cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => fmt(c.raw) + ' (' + Math.round(c.raw/total*100) + '%)' } } }
+    }
+  });
+
+  const legend = document.getElementById('donutLegend');
+  legend.innerHTML = sorted.map((e,i) => `
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+      <div style="width:9px;height:9px;border-radius:3px;background:${CAT_COLORS[i]};flex-shrink:0"></div>
+      <span style="color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e[0]}</span>
+      <span style="color:var(--muted)">${Math.round(e[1]/total*100)}%</span>
+    </div>`).join('');
+}
+
+function renderCatBars(rows) {
+  const catMap = {};
+  rows.forEach(r => {
+    if (r.amount >= 0 || r.type === 'income') return;
+    const c = r.category || 'Other';
+    catMap[c] = (catMap[c] || 0) + Math.abs(r.amount);
+  });
+  const sorted = Object.entries(catMap).sort((a,b) => b[1]-a[1]).slice(0,5);
+  const max = sorted[0]?.[1] || 1;
+  document.getElementById('catBars').innerHTML = sorted.map((e,i) => `
+    <div class="cat-item">
+      <div class="cat-header"><span>${e[0]}</span><span class="cat-pct">${fmtShort(e[1])}</span></div>
+      <div class="cat-bar"><div class="cat-fill" style="width:${e[1]/max*100}%;background:${CAT_COLORS[i]}"></div></div>
+    </div>`).join('') || '<div class="empty"><div class="empty-icon">📂</div>ไม่มีข้อมูล</div>';
+}
+
+function renderBills(rows) {
+  const now = new Date();
+  const upcoming = rows
+    .filter(r => r.date && r.date >= now && r.date <= new Date(now.getTime() + 14*86400000) && r.amount < 0)
+    .sort((a,b) => a.date - b.date).slice(0,5);
+
+  document.getElementById('billsList').innerHTML = upcoming.length ? upcoming.map((r,i) => `
+    <div class="bill-item">
+      <div class="bill-icon" style="background:${iconBgs[i%5]}">${catIcon(r.category)}</div>
+      <div class="bill-info">
+        <div class="bill-name">${r.description || r.category}</div>
+        <div class="bill-date">${r.date.toLocaleDateString('th-TH', {day:'numeric',month:'short'})}</div>
+      </div>
+      <div class="bill-amount" style="color:var(--accent3)">${fmt(r.amount)}</div>
+    </div>`).join('')
+  : '<div class="empty"><div class="empty-icon">✅</div>ไม่มีบิลใน 14 วันนี้</div>';
+}
+
+function renderCalendar(rows, now) {
+  const year = now.getFullYear(), month = now.getMonth();
+  const eventDays = new Set(rows.filter(r => r.date).map(r => r.date.getFullYear() + '-' + r.date.getMonth() + '-' + r.date.getDate()));
+  const first = new Date(year, month, 1).getDay();
+  const days = new Date(year, month+1, 0).getDate();
+  const monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const dayNames = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+
+  let html = `<div class="cal-header"><button class="cal-nav">‹</button><div class="cal-month">${monthNames[month]} ${year+543}</div><button class="cal-nav">›</button></div>`;
+  html += `<div class="cal-grid">`;
+  dayNames.forEach(d => html += `<div class="cal-day-name">${d}</div>`);
+  for (let i = 0; i < first; i++) html += `<div class="cal-day other-month"></div>`;
+  for (let d = 1; d <= days; d++) {
+    const isToday = d === now.getDate();
+    const hasEv = eventDays.has(year + '-' + month + '-' + d);
+    html += `<div class="cal-day${isToday?' today':''}${hasEv&&!isToday?' has-event':''}">${d}</div>`;
+  }
+  html += '</div>';
+  document.getElementById('calendarWidget').innerHTML = html;
+}
+
+function renderTxns(rows) {
+  const recent = rows.slice(0, 15);
+  if (!recent.length) {
+    document.getElementById('txnTable').innerHTML = '<div class="empty"><div class="empty-icon">📋</div>ไม่มีธุรกรรม</div>';
+    return;
+  }
+  const rows_html = recent.map(r => {
+    const isIncome = r.amount > 0 || r.type === 'income';
+    const dateStr = r.date ? r.date.toLocaleDateString('th-TH', {day:'numeric', month:'short'}) : '—';
+    return `<tr>
+      <td>${dateStr}</td>
+      <td><span class="txn-badge" style="background:rgba(108,99,255,0.12);color:var(--accent)">${r.category || '—'}</span></td>
+      <td style="color:var(--muted)">${r.description || '—'}</td>
+      <td class="txn-amount ${isIncome ? 'pos' : 'neg'}" style="text-align:right;font-family:var(--font2);font-weight:600">
+        ${isIncome ? '+' : ''}${fmt(r.amount)}
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('txnTable').innerHTML = `
+    <table class="txn-table">
+      <thead><tr><th>วันที่</th><th>หมวดหมู่</th><th>รายละเอียด</th><th style="text-align:right">จำนวนเงิน</th></tr></thead>
+      <tbody>${rows_html}</tbody>
+    </table>`;
+}
+
+// ==================== ACTIONS ====================
+function showDashboard(rows) {
+  document.getElementById('setupModal').classList.remove('open');
+  document.getElementById('dashMain').style.display = 'block';
+  renderDashboard(rows);
+  document.getElementById('lastSync').textContent = 'อัปเดตล่าสุด: ' + new Date().toLocaleString('th-TH');
+  document.getElementById('syncDot').style.background = 'var(--accent2)';
+  document.getElementById('syncLabel').textContent = 'เชื่อมต่อแล้ว';
+}
+
+async function connectSheet() {
+  const input = document.getElementById('sheetInput').value;
+  const name = document.getElementById('sheetName').value || 'Sheet1';
+  const id = extractSheetId(input);
+  if (!id) { alert('กรุณาใส่ URL หรือ Sheet ID ที่ถูกต้อง'); return; }
+
+  const btn = document.querySelector('.btn-primary');
+  btn.textContent = 'กำลังโหลด...'; btn.disabled = true;
+  try {
+    const rawRows = await fetchSheetData(id, name);
+    const rows = rawRows.map(normalizeRow).filter(r => r.amount !== 0);
+    if (!rows.length) throw new Error('ไม่พบข้อมูลใน Sheet');
+    showDashboard(rows);
+  } catch(e) {
+    alert('เกิดข้อผิดพลาด: ' + e.message + '\n\nตรวจสอบว่า:\n1. Sheet ถูกตั้งค่าเป็น Public\n2. URL ถูกต้อง\n3. ชื่อ Sheet ถูกต้อง');
+  } finally {
+    btn.textContent = 'เชื่อมต่อ'; btn.disabled = false;
+  }
+}
+
+function loadDemo() {
+  document.getElementById('syncLabel').textContent = 'Demo Mode';
+  showDashboard(generateDemo());
+}
+</script>
+</body>
+</html>
